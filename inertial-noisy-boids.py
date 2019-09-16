@@ -4,7 +4,7 @@
 #speed v, direction n, and y-position.
 #good noise value 1.0
 #good density 1.0
-#good valeu for wall_osc~0.01
+#good value for wall_osc~0.01
 
 import numpy as np
 import matplotlib
@@ -16,12 +16,13 @@ import random as rand
 #Particle class definition
 class particle:
    # noise=0.6 #original value
-    noise=1.0
-#    noise_T=10.0
+    noise_par=1.0
+    noise_per=0.1
+    gamma=0.1
+    rq = 0.5
     v0 = 1.0
     mu=1.0
     Frep=30.0
-    #Fadh=0.75 #original value
     Fadh=0.75
     #Req=5./6. # original work by Szabo
     #R0=1.0
@@ -31,7 +32,9 @@ class particle:
         self.r = np.array([x,y])
         self.v =  np.array([vx*self.v0,vy*self.v0])
         self.theta = np.arctan2(vy,vx)
-        self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
+        self.n_par = np.array([np.cos(self.theta),np.sin(self.theta)])
+        self.n_per = np.array([np.sin(self.theta),-np.cos(self.theta)])
+        self.v_par = np.dot(self.v,self.n_par)
         self.ident = ident
         self.Mybox = int((self.r[0]+L[0])/lbox)+nb[0]*int((self.r[1]+L[1])/lbox)
         self.Force =np.array([0.,0.])
@@ -51,13 +54,14 @@ class particle:
         return self.Mybox
 
     def mov(self): #Particle moviment
-        self.v=self.v0*self.n+self.mu*self.Force#+self.noise_T*np.sqrt(dt)
-        dr=self.v*dt
+        self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*(rand.random()-0.5)*np.sqrt(dt)
+        dr_parallel=self.v_par*dt
+        dr_perpend = noise_per*(rand.random()-0.5)*np.sqrt(dt)
+        dr=dr_par*self.n+dr_per*self.n_per
         self.r+=dr
-        self.autovelchange(self.v,self.n)
-        self.theta+=self.dtheta*dt/tau+self.noise*(rand.random()-0.5)*np.sqrt(dt)
-        self.n[0]=np.cos(self.theta)
-        self.n[1]=np.sin(self.theta)
+        self.theta+=self.rq*noise_per*(rand.random()-0.5)*sqrt(dt)
+        self.n_par = np.array([np.cos(self.theta),np.sin(self.theta)])
+        self.n_per = np.array([np.sin(self.theta),-np.cos(self.theta)])
         self.contour()
         return self.r,self.v, self.n
 
@@ -70,54 +74,30 @@ class particle:
 #            self.r[0]=-2*L[0]-self.r[0]
             self.r[0]=-L[0]+wall_osc*rand.random()*self.Req
         if self.r[0]>L[0]: #will be send back to the first quarter, v, n and theta remain the same
-#            self.n[0]=np.abs(self.n[0])  
-#            self.v[0]=np.abs(self.v[0])  
-#            self.theta=0.               
             self.r[0]=(-1+rand.random()/4.)*L[0]
-#            self.n[0]=-np.abs(self.n[0])
-#            self.v[0]=-np.abs(self.v[0])
-#            self.theta=3.14
-#            self.r[0]=2*L[0]-self.r[0]    
         if self.r[1]<-L[1]:
             self.n[1]=np.abs(self.n[1])
             self.v[1]=np.abs(self.v[1])
             self.theta=rand.random()*3.14
-            #self.r[1]=-2*L[1]-self.r[1]
             self.r[1]=-L[1]+wall_osc*self.Req*rand.random()
         if self.r[1]>L[1]:
             self.n[1]=-np.abs(self.n[1])
             self.v[1]=-np.abs(self.v[1])
             self.theta=-rand.random()*3.14
-            #self.r[1]=2*L[1]-self.r[1]
             self.r[1]=L[1]-wall_osc*self.Req*rand.random()
         normr=np.linalg.norm(self.r)
         #Particles hitting the cylinder loose their velocity component perpendicular to the cylinder if invading it
-        if normr < cylinder_radius:
-            vaux=self.v
-            vpar=np.dot(self.v,self.r)*self.r/np.linalg.norm(self.r)**2 #velocity component parallel to cylinder radius
-            vper=self.v-vpar #perpendicular component to cylinder radius (parallel to cylinder contour)
-            crit = np.dot(vpar,self.r)
-            if crit < 0 :
-                self.v=vper
-                self.r-=vaux*dt
-                # if self.ident == 20 :
-                #     print self.r[0], self.r[1] , self.v[0]*dt, self.v[1]*dt
-                #     print 0., 0., self.r[0], self.r[1]
-#            print self.ident,np.linalg.norm(self.v*dt+self.r), self.v
-            self.r+=self.v*dt 
-#            print self.ident,self.r, np.linalg.norm(self.r)
-#            print crit, self.v, vpar, vper, self.r
-            self.n=self.v/np.linalg.norm(self.v)
-            self.theta = np.arctan2(self.v[1],self.v[0])
-            # if self.r[1]<0:
-            #     self.theta=math.atan2(self.r[0],-self.r[1])
-            #     self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
-            #     self.v = self.v0*self.n
-            # if self.r[1]>0:
-            #     self.theta=math.atan2(-self.r[0],self.r[1])
-            #     self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
-            #     self.v =  self.v0*self.n
-            # self.r=self.r*cylinder_radius/normr
+        # if normr < cylinder_radius:
+        #     vaux=self.v
+        #     vpar=np.dot(self.v,self.r)*self.r/np.linalg.norm(self.r)**2 #velocity component parallel to cylinder radius
+        #     vper=self.v-vpar #perpendicular component to cylinder radius (parallel to cylinder contour)
+        #     crit = np.dot(vpar,self.r)
+        #     if crit < 0 :
+        #         self.v=vper
+        #         self.r-=vaux*dt
+        #     self.r+=self.v*dt 
+        #     self.n=self.v/np.linalg.norm(self.v)
+        #     self.theta = np.arctan2(self.v[1],self.v[0])
         return self.r, self.theta, self.n, self.v
 
     def autovelchange(self,v,n):
@@ -180,7 +160,7 @@ global N,L,lbox,nb,dt,nb2,t,cylinder_radius
 N=500
 L=np.array([15,5])
 lbox=1
-nb=2*L/lbox
+nb=2*L
 nb2=nb[1]*nb[0]
 dt=0.01
 exit_fig=20
