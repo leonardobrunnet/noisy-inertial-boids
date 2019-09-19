@@ -16,12 +16,12 @@ import random as rand
 #Particle class definition
 class particle:
    # noise=0.6 #original value
-    noise_par=1.0
-    noise_per=0.1
+    noise_par=0.2
+    noise_per=0.02
     gamma=0.1
     rq = 0.5
     v0 = 1.0
-    mu=1.0
+    mu=0.1
     Frep=30.0
     Fadh=0.75
     #Req=5./6. # original work by Szabo
@@ -32,9 +32,9 @@ class particle:
         self.r = np.array([x,y])
         self.v =  np.array([vx*self.v0,vy*self.v0])
         self.theta = np.arctan2(vy,vx)
-        self.n_par = np.array([np.cos(self.theta),np.sin(self.theta)])
+        self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
         self.n_per = np.array([np.sin(self.theta),-np.cos(self.theta)])
-        self.v_par = np.dot(self.v,self.n_par)
+        self.v_par = np.dot(self.v,self.n)
         self.ident = ident
         self.Mybox = int((self.r[0]+L[0])/lbox)+nb[0]*int((self.r[1]+L[1])/lbox)
         self.Force =np.array([0.,0.])
@@ -54,14 +54,17 @@ class particle:
         return self.Mybox
 
     def mov(self): #Particle moviment
+        self.v_par = np.dot(self.v,self.n)
         self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*(rand.random()-0.5)*np.sqrt(dt)
-        dr_parallel=self.v_par*dt
-        dr_perpend = noise_per*(rand.random()-0.5)*np.sqrt(dt)
+        dr_par=self.v_par*dt
+        dr_per = self.noise_per*(rand.random()-0.5)*np.sqrt(dt)
         dr=dr_par*self.n+dr_per*self.n_per
-        self.r+=dr
-        self.theta+=self.rq*noise_per*(rand.random()-0.5)*sqrt(dt)
-        self.n_par = np.array([np.cos(self.theta),np.sin(self.theta)])
+        self.v =  self.Force*dt +self.mu*self.v_par*self.n  
+        self.r+= self.v*dt +dr
+        self.theta+=self.rq*self.noise_per*(rand.random()-0.5)*np.sqrt(dt)
+        self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
         self.n_per = np.array([np.sin(self.theta),-np.cos(self.theta)])
+        self.v=self.v_par*self.n
         self.contour()
         return self.r,self.v, self.n
 
@@ -123,12 +126,10 @@ class particle:
             if(self.ident!=i):
                 dr=part[i].r-self.r
                 Req=(part[i].Req+self.Req)/2.
-                #print self.ident, i, np.linalg.norm(dr)
                 self.Force+=force(self,dr,Req)
         for i in box[self.Mybox].neighboxlist:
             Req=(part[i].Req+self.Req)/2.
             dr=part[i].r-self.r
-            #            print self.ident, i, np.linalg.norm(dr),t
             f=force(self,dr,Req)
             self.Force+=f
             part[i].Force-=f
@@ -157,7 +158,7 @@ class boite:
 #Main program                                  
 #global variables
 global N,L,lbox,nb,dt,nb2,t,cylinder_radius
-N=500
+N=100
 L=np.array([15,5])
 lbox=1
 nb=2*L
@@ -223,7 +224,8 @@ while(t<passos*dt):
 # Make a scatter graph
     intt+=1
     delta=5.
-    sizes=1.5
+#    sizes=1.5
+    sizes=4.0
     if(intt%exit_fig==0):
         print(t)
         output_file.write("x y vx vy \n")
