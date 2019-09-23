@@ -17,17 +17,17 @@ import random as rand
 class particle:
    # noise=0.6 #original value
     noise_par=0.2
-    noise_per=0.02
+    noise_per=0.02  #sqrt(2k)
     gamma=0.1
-    rq = 0.5
+    rq = 0.5  #sqrt(q) 
     v0 = 1.0
-    mu=0.1
-    Frep=30.0
-    Fadh=0.75
+    mu=.1
+    Frep=30.0  #Inclinacao da forca harmonica
+    Fadh=0.75  #Inclinacao da forca de adesao
     #Req=5./6. # original work by Szabo
     #R0=1.0
 #    Req=1.0
-    R0=6./5.
+    R0=6./5.  #alcance da forca
     def __init__(self, x, y, vx, vy, ident, Raio_equilibrio):
         self.r = np.array([x,y])
         self.v =  np.array([vx*self.v0,vy*self.v0])
@@ -57,18 +57,26 @@ class particle:
         self.v_par = np.dot(self.v,self.n)
         self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*(rand.random()-0.5)*np.sqrt(dt)
         dr_par=self.v_par*dt
-        dr_per = self.noise_per*(rand.random()-0.5)*np.sqrt(dt)
-        dr=dr_par*self.n+dr_per*self.n_per
-        self.v =  self.Force*dt +self.mu*self.v_par*self.n  
-        self.r+= self.v*dt +dr
-        self.theta+=self.rq*self.noise_per*(rand.random()-0.5)*np.sqrt(dt)
+        beta_per  =  self.noise_per*(rand.random()-0.5)*np.sqrt(dt)
+        dr_per = beta_per*self.rq
+#        dr=dr_par*self.n+dr_per*self.n_per
+        self.v =  self.mu*self.Force*dt +self.v_par*self.n  
+        self.r+= self.v*dt +dr_per*self.n_per
+        self.theta+=beta_per
         self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
         self.n_per = np.array([np.sin(self.theta),-np.cos(self.theta)])
-        self.v=self.v_par*self.n
         self.contour()
         return self.r,self.v, self.n
-
-    
+    def contour_periodic(self):
+        if self.r[0]<-L[0]:
+            self.r[0]+=2*L[0]
+        if self.r[0]>L[0]:
+            self.r[0]-=2*L[0]
+        if self.r[1]<-L[1]:
+            self.r[1]+=2*L[1]
+        if self.r[1]>L[1]:
+            self.r[1]-=2*L[1]
+        return(self.r)
     def contour(self):
         if self.r[0]<-L[0]:
             self.n[0]=np.abs(self.n[0])
@@ -111,9 +119,7 @@ class particle:
 
     def forces_between_particles(self):
         def force(self,dr,Req):
-
             normdr=np.linalg.norm(dr)
-            
             if(normdr<Req):
                 f=self.Frep*(1/self.Req-1/normdr)*dr
             else:
@@ -158,15 +164,15 @@ class boite:
 #Main program                                  
 #global variables
 global N,L,lbox,nb,dt,nb2,t,cylinder_radius
-N=100
+N=200
 L=np.array([15,5])
 lbox=1
 nb=2*L
 nb2=nb[1]*nb[0]
 dt=0.01
-exit_fig=20
+exit_fig=10
 tau=10.0
-passos=50000
+passos=5000
 rand.seed(0.1)
 cylinder_radius=2.25
 wall_osc = 0.01  #amplitude of random number separating a boid from the walls
