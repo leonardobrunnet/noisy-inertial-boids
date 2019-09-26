@@ -23,7 +23,8 @@ class particle:
     v0 = 1.0
     mu=.1
     Frep=30.0  #Inclinacao da forca harmonica
-    Fadh=0.75  #Inclinacao da forca de adesao
+    #Fadh=0.75  #Inclinacao da forca de adesao (original Szabo)
+    Fadh=0.1
     #Req=5./6. # original work by Szabo
     #R0=1.0
 #    Req=1.0
@@ -36,13 +37,13 @@ class particle:
         self.n_per = np.array([np.sin(self.theta),-np.cos(self.theta)])
         self.v_par = np.dot(self.v,self.n)
         self.ident = ident
-        self.Mybox = int((self.r[0]+L[0])/lbox)+nb[0]*int((self.r[1]+L[1])/lbox)
+        self.Mybox = int((self.r[0])/lbox)+nb[0]*int((self.r[1])/lbox)
         self.Force =np.array([0.,0.])
         self.Req = 1+Raio_equilibrio
         
     
     def mybox(self): #Each particle calculates the box it is in
-        j=int((self.r[0]+L[0])/lbox)+nb[0]*int((self.r[1]+L[1])/lbox)
+        j=int((self.r[0])/lbox)+nb[0]*int((self.r[1])/lbox)
         return j
 
     def changebox(self):
@@ -65,18 +66,13 @@ class particle:
         self.theta+=beta_per
         self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
         self.n_per = np.array([np.sin(self.theta),-np.cos(self.theta)])
-        self.contour()
+        self.contour_periodic()
         return self.r,self.v, self.n
+
     def contour_periodic(self):
-        if self.r[0]<-L[0]:
-            self.r[0]+=2*L[0]
-        if self.r[0]>L[0]:
-            self.r[0]-=2*L[0]
-        if self.r[1]<-L[1]:
-            self.r[1]+=2*L[1]
-        if self.r[1]>L[1]:
-            self.r[1]-=2*L[1]
-        return(self.r)
+        self.r=(self.r+L)%L
+        return self.r
+
     def contour(self):
         if self.r[0]<-L[0]:
             self.n[0]=np.abs(self.n[0])
@@ -136,6 +132,14 @@ class particle:
         for i in box[self.Mybox].neighboxlist:
             Req=(part[i].Req+self.Req)/2.
             dr=part[i].r-self.r
+            if (dr[0]) > L[0]/2.:
+                dr[0]=part[i].r[0]-self.r[0]-L[0]
+            if (dr[0]) < -L[0]/2.:
+                dr[0]=part[i].r[0]-self.r[0]+L[0]
+            if (dr[1]) > L[1]/2.:
+                dr[1]=part[i].r[1]-self.r[1]-L[1]
+            if (dr[1]) < -L[1]/2.:
+                dr[1]=part[i].r[1]-self.r[1]+L[1]
             f=force(self,dr,Req)
             self.Force+=f
             part[i].Force-=f
@@ -152,22 +156,34 @@ class boite:
 
     def neighbor_list(self):
         self.neighboxlist=[]
-        if self.index%nb[0]!=nb[0]-1:
-            self.neighboxlist.extend(box[self.index+1].mylist)
-        if self.index%nb[0]!=0 and self.index+nb[0]<nb2:
-            self.neighboxlist.extend(box[self.index+nb[0]-1].mylist)
-        if self.index+nb[0]<nb2:
-            self.neighboxlist.extend(box[self.index+nb[0]].mylist)
-        if self.index+nb[0]<nb2 and self.index%nb[0]!=nb[0]-1:
-            self.neighboxlist.extend(box[self.index+nb[0]+1].mylist)
+        zz1=(np.int64(self.index/nb[0])*nb[0]+(self.index+1)%nb[0])%nb2
+        zz2=(np.int64((self.index+nb[0])/nb[0])*nb[0]+(self.index+nb[0]-1)%nb[0])%nb2
+        zz3=(np.int64((self.index+nb[0])/nb[0])*nb[0]+(self.index+nb[0])%nb[0])%nb2
+        zz4=(np.int64((self.index+nb[0])/nb[0])*nb[0]+(self.index+nb[0]+1)%nb[0])%nb2
+        self.neighboxlist.extend(box[zz1].mylist)
+        self.neighboxlist.extend(box[zz2].mylist)
+        self.neighboxlist.extend(box[zz3].mylist)
+        self.neighboxlist.extend(box[zz4].mylist)
+
+
+    # def neighbor_list(self):
+    #     self.neighboxlist=[]
+    #     if self.index%nb[0]!=nb[0]-1:
+    #         self.neighboxlist.extend(box[self.index+1].mylist)
+    #     if self.index%nb[0]!=0 and self.index+nb[0]<nb2:
+    #         self.neighboxlist.extend(box[self.index+nb[0]-1].mylist)
+    #     if self.index+nb[0]<nb2:
+    #         self.neighboxlist.extend(box[self.index+nb[0]].mylist)
+    #     if self.index+nb[0]<nb2 and self.index%nb[0]!=nb[0]-1:
+    #         self.neighboxlist.extend(box[self.index+nb[0]+1].mylist)
 
 #Main program                                  
 #global variables
 global N,L,lbox,nb,dt,nb2,t,cylinder_radius
-N=200
-L=np.array([15,5])
+N=1000
+L=np.array([8,8])
 lbox=1
-nb=2*L
+nb=np.int64(L/lbox)
 nb2=nb[1]*nb[0]
 dt=0.01
 exit_fig=10
@@ -189,7 +205,7 @@ output_file.write("Max-dist: 4 \n")
 #initialize N particles
 
 #part=list(particle(-L[0]+L[0]/2*rand.random(),L[1]*2*(rand.random()-0.5), rand.random()-0.5,rand.random()-0.5, i) for i in range(N))
-part=list(particle(-L[0]+3*L[0]/4.*rand.random(),L[1]*2*(rand.random()-0.5), rand.random()-0.5,rand.random()-0.5, i, size_disp*(rand.random()-0.5) ) for i in range(N))
+part=list(particle(L[0]*rand.random(),L[1]*(rand.random()-0.5), rand.random()-0.5,rand.random()-0.5, i, size_disp*(rand.random()-0.5) ) for i in range(N))
 box=list(boite(i) for i in range(nb2))
 t=0
 
@@ -229,13 +245,13 @@ while(t<passos*dt):
 
 # Make a scatter graph
     intt+=1
-    delta=5.
+    delta=1.
 #    sizes=1.5
     sizes=4.0
     if(intt%exit_fig==0):
         print(t)
         output_file.write("x y vx vy \n")
-        plt.axis([-L[0]-delta,L[0]+delta,-L[1]-delta,L[1]+delta])
+        plt.axis([-delta,L[0]+delta,-delta,L[1]+delta])
         plt.axes().set_aspect(1.0)
         circle=plt.Circle((0.,0.),radius=cylinder_radius-0.5,color='r')
         x,y,vx,vy=[],[],[],[]
