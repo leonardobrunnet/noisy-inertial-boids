@@ -16,15 +16,15 @@ import random as rand
 #Particle class definition
 class particle:
    # noise=0.6 #original value
-    noise_par=0.2
-    noise_per=0.02  #sqrt(2k)
+    noise_par=0.5
+    noise_per=1.0  #sqrt(2k)
     gamma=0.1
     rq = 0.5  #sqrt(q) 
     v0 = 1.0
-    mu=.1
+    mu=1.
     Frep=30.0  #Inclinacao da forca harmonica
     #Fadh=0.75  #Inclinacao da forca de adesao (original Szabo)
-    Fadh=0.1
+    Fadh=0.75
     #Req=5./6. # original work by Szabo
     #R0=1.0
 #    Req=1.0
@@ -61,7 +61,7 @@ class particle:
         beta_per  =  self.noise_per*(rand.random()-0.5)*np.sqrt(dt)
         dr_per = beta_per*self.rq
 #        dr=dr_par*self.n+dr_per*self.n_per
-        self.v =  self.mu*self.Force*dt +self.v_par*self.n  
+        self.v =  self.mu*self.Force*dt+self.v_par*self.n#-self.gamma*self.v
         self.r+= self.v*dt +dr_per*self.n_per
         self.theta+=beta_per
         self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
@@ -117,7 +117,7 @@ class particle:
         def force(self,dr,Req):
             normdr=np.linalg.norm(dr)
             if(normdr<Req):
-                f=self.Frep*(1/self.Req-1/normdr)*dr
+                f=self.Frep*(1/Req-1/normdr)*dr
             else:
                 if(normdr<self.R0):
                     f=self.Fadh*dr*(1-Req/normdr)/(self.R0-Req)
@@ -129,6 +129,7 @@ class particle:
                 dr=part[i].r-self.r
                 Req=(part[i].Req+self.Req)/2.
                 self.Force+=force(self,dr,Req)
+
         for i in box[self.Mybox].neighboxlist:
             Req=(part[i].Req+self.Req)/2.
             dr=part[i].r-self.r
@@ -180,8 +181,9 @@ class boite:
 #Main program                                  
 #global variables
 global N,L,lbox,nb,dt,nb2,t,cylinder_radius
-N=1000
-L=np.array([8,8])
+N=60
+L=np.array([6,6])
+#L=np.array([2,2])
 lbox=1
 nb=np.int64(L/lbox)
 nb2=nb[1]*nb[0]
@@ -191,7 +193,7 @@ tau=10.0
 passos=5000
 rand.seed(0.1)
 cylinder_radius=2.25
-wall_osc = 0.01  #amplitude of random number separating a boid from the walls
+wall_osc = 0.00  #amplitude of random number separating a boid from the walls
 size_disp = 0.1  #particle size Req dispersion
 output_file_name="output_simu_sabo.dat"
 output_file = open(output_file_name,'w')
@@ -246,6 +248,7 @@ while(t<passos*dt):
 # Make a scatter graph
     intt+=1
     delta=1.
+    amplify_arrow=1
 #    sizes=1.5
     sizes=4.0
     if(intt%exit_fig==0):
@@ -254,15 +257,18 @@ while(t<passos*dt):
         plt.axis([-delta,L[0]+delta,-delta,L[1]+delta])
         plt.axes().set_aspect(1.0)
         circle=plt.Circle((0.,0.),radius=cylinder_radius-0.5,color='r')
-        x,y,vx,vy=[],[],[],[]
+        x,y,vx,vy,nx,ny=[],[],[],[],[],[]
         map(lambda i:x.append(i.r[0]), part)
         map(lambda i:y.append(i.r[1]), part)
         map(lambda i:vx.append(i.v[0]), part)
         map(lambda i:vy.append(i.v[1]), part)
+        map(lambda i:nx.append(i.n[0]), part)
+        map(lambda i:ny.append(i.n[1]), part)
         for i in range(len(x)):
-            output_file.write("%f %f %f %f \n"%(x[i],y[i],vx[i],vy[i]))
+            output_file.write("%f %f %f %f %f %f \n"%(x[i],y[i],vx[i],vy[i],nx[i],ny[i]))
 
-        plt.scatter(x,y,s=sizes,alpha=0.3)
+#        plt.scatter(x,y,s=sizes,alpha=0.3)
+        plt.quiver(x,y,nx,ny,hold=None)
         name=str(figindex)+".png"
         fig = plt.gcf()
         plt.rc("savefig",dpi=300)
