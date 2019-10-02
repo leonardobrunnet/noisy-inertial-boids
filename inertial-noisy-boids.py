@@ -21,10 +21,10 @@ class particle:
     gamma=0.1
     rq = 0.5  #sqrt(q) 
     v0 = 1.0
-    mu=1.
-    Frep=30.0  #Inclinacao da forca harmonica
+    mu=10.
+    Frep=60.0  #Inclinacao da forca harmonica (parte repulsiva)
     #Fadh=0.75  #Inclinacao da forca de adesao (original Szabo)
-    Fadh=0.75
+    Fadh=0.
     #Req=5./6. # original work by Szabo
     #R0=1.0
 #    Req=1.0
@@ -56,12 +56,16 @@ class particle:
 
     def mov(self): #Particle moviment
         self.v_par = np.dot(self.v,self.n)
-        self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*(rand.random()-0.5)*np.sqrt(dt)
-        dr_par=self.v_par*dt
+        self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*rand.random()*np.sqrt(dt)
+        #        dr_par=self.v_par*dt
+        #        dr=dr_par*self.n+dr_per*self.n_per
+        dv_vol_exclusion=self.mu*self.Force*dt
+        vec_self_v_par=self.v_par*self.n
+        self.v = dv_vol_exclusion +vec_self_v_par#-self.gamma*self.v
+        # if self.ident == 0 :
+        #     print np.dot(dv_vol_exclusion,vec_self_v_par)/np.linalg.norm(dv_vol_exclusion)/np.linalg.norm(vec_self_v_par),np.linalg.norm(dv_vol_exclusion)/np.linalg.norm(vec_self_v_par)
         beta_per  =  self.noise_per*(rand.random()-0.5)*np.sqrt(dt)
         dr_per = beta_per*self.rq
-#        dr=dr_par*self.n+dr_per*self.n_per
-        self.v =  self.mu*self.Force*dt+self.v_par*self.n#-self.gamma*self.v
         self.r+= self.v*dt +dr_per*self.n_per
         self.theta+=beta_per
         self.n = np.array([np.cos(self.theta),np.sin(self.theta)])
@@ -187,7 +191,7 @@ L=np.array([6,6])
 lbox=1
 nb=np.int64(L/lbox)
 nb2=nb[1]*nb[0]
-dt=0.01
+dt=0.0001
 exit_fig=10
 tau=10.0
 passos=5000
@@ -250,7 +254,7 @@ while(t<passos*dt):
     delta=1.
     amplify_arrow=1
 #    sizes=1.5
-    sizes=4.0
+    sizes=16.0
     if(intt%exit_fig==0):
         print(t)
         output_file.write("x y vx vy \n")
@@ -268,7 +272,9 @@ while(t<passos*dt):
             output_file.write("%f %f %f %f %f %f \n"%(x[i],y[i],vx[i],vy[i],nx[i],ny[i]))
 
 #        plt.scatter(x,y,s=sizes,alpha=0.3)
-        plt.quiver(x,y,nx,ny,hold=None)
+        #plt.quiver(x,y,nx,ny,hold=None,color='b')
+        #plt.quiver(x,y,vx,vy,hold=None,color='g')
+        plt.scatter(x,y,s=sizes,alpha=0.5)
         name=str(figindex)+".png"
         fig = plt.gcf()
         plt.rc("savefig",dpi=300)
