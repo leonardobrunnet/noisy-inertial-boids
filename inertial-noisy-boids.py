@@ -17,11 +17,11 @@ import random as rand
 class particle:
    # noise=0.6 #original value
     noise_par=0.5
-    noise_per=1.0  #sqrt(2k)
-    gamma=0.1
+    noise_per=0.5  #sqrt(2k)
+    gamma=1.
     rq = 0.5  #sqrt(q) 
-    v0 = 1.0
-    mu=10.
+    v0 = 0.1
+    mu=1.
     Frep=60.0  #Inclinacao da forca harmonica (parte repulsiva)
     #Fadh=0.75  #Inclinacao da forca de adesao (original Szabo)
     Fadh=0.
@@ -56,7 +56,7 @@ class particle:
 
     def mov(self): #Particle moviment
         self.v_par = np.dot(self.v,self.n)
-        self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*rand.random()*np.sqrt(dt)
+        self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*(0.5-rand.random())*np.sqrt(dt)
         #        dr_par=self.v_par*dt
         #        dr=dr_par*self.n+dr_per*self.n_per
         dv_vol_exclusion=self.mu*self.Force*dt
@@ -185,16 +185,16 @@ class boite:
 #Main program                                  
 #global variables
 global N,L,lbox,nb,dt,nb2,t,cylinder_radius
-N=60
+N=100
 L=np.array([6,6])
 #L=np.array([2,2])
 lbox=1
 nb=np.int64(L/lbox)
 nb2=nb[1]*nb[0]
-dt=0.0001
+dt=0.01
 exit_fig=10
 tau=10.0
-passos=5000
+passos=50000
 rand.seed(0.1)
 cylinder_radius=2.25
 wall_osc = 0.00  #amplitude of random number separating a boid from the walls
@@ -269,11 +269,11 @@ while(t<passos*dt):
         map(lambda i:nx.append(i.n[0]), part)
         map(lambda i:ny.append(i.n[1]), part)
         for i in range(len(x)):
-            output_file.write("%f %f %f %f %f %f \n"%(x[i],y[i],vx[i],vy[i],nx[i],ny[i]))
+            output_file.write("%f %f %f %f %f %f %f \n"%(t,x[i],y[i],vx[i],vy[i],nx[i],ny[i]))
 
 #        plt.scatter(x,y,s=sizes,alpha=0.3)
-        #plt.quiver(x,y,nx,ny,hold=None,color='b')
-        #plt.quiver(x,y,vx,vy,hold=None,color='g')
+        plt.quiver(x[0:10],y[0:10],nx[0:10],ny[0:10],hold=None,color='b')
+        plt.quiver(x[0:10],y[0:10],vx[0:10],vy[0:10],hold=None,color='g')
         plt.scatter(x,y,s=sizes,alpha=0.5)
         name=str(figindex)+".png"
         fig = plt.gcf()
