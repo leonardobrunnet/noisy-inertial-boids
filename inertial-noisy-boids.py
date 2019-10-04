@@ -20,7 +20,7 @@ class particle:
     noise_per=0.5  #sqrt(2k)
     gamma=1.
     rq = 0.5  #sqrt(q) 
-    v0 = 0.1
+    v0 = 5.0
     mu=1.
     Frep=60.0  #Inclinacao da forca harmonica (parte repulsiva)
     #Fadh=0.75  #Inclinacao da forca de adesao (original Szabo)
@@ -56,7 +56,7 @@ class particle:
 
     def mov(self): #Particle moviment
         self.v_par = np.dot(self.v,self.n)
-        self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*(0.5-rand.random())*np.sqrt(dt)
+        self.v_par+=-self.gamma*self.v_par*dt+self.noise_par*(0.5-rand.random())*np.sqrt(dt)+self.v0*dt
         #        dr_par=self.v_par*dt
         #        dr=dr_par*self.n+dr_per*self.n_per
         dv_vol_exclusion=self.mu*self.Force*dt
@@ -194,7 +194,7 @@ nb2=nb[1]*nb[0]
 dt=0.01
 exit_fig=10
 tau=10.0
-passos=50000
+passos=5000
 rand.seed(0.1)
 cylinder_radius=2.25
 wall_osc = 0.00  #amplitude of random number separating a boid from the walls
